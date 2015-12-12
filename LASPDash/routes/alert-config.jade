@@ -1,0 +1,22 @@
+extends ../layout
+block content
+  link(rel='stylesheet', href='/stylesheets/hgraph.css')
+  script(src='http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js')
+  script(src='/javascripts/views/report/page-script.js')
+  script(src='/javascripts/views/report/HealthGraph.js')
+  script(src='/javascripts/views/report/d3.js')
+  script(src='/javascripts/views/report/hammer.js')
+  h1= title
+  
+  hr(class="db")
+  
+  section(id="graph_container" class="content_inset")
+    nav(class="cf")
+        button(class="t grad1 fleft graph_nav_opt" id="info_btn")
+          span(class="fa fa-info-circle btn-fix")
+        button(class="t grad1 fleft graph_nav_opt" id="zoom_btn")
+          span(class="fa fa-search-plus btn-fix")         
+    figure(id="viz" class="content_inset healthgraph detailed")
+    div(id="info_panel")
+      img(src="/images/hgraph_timeline.png")
+

@@ -1,0 +1,21 @@
+{
+  "name": "laspsongbird",
+  "version": "1.0.0",
+  "description": "Service that connects to the LASPAPI, watches for triggers, logs events when trigger, and delegates this information to RestComm to send emails, voice calls, texts, etc. to targets.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "lasp",
+    "api",
+    "song",
+    "bird",
+    "restcomm"
+  ],
+  "author": "Maverick Peppers",
+  "license": "ISC",
+  "dependencies": {
+    "request": "^2.67.0".
+  }
+}

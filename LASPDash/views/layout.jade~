@@ -1,0 +1,30 @@
+doctype html
+html
+  head
+    title= title
+    link(rel='stylesheet', href='/stylesheets/lavish-bootstrap.css')
+    link(rel='stylesheet', href='/stylesheets/nav-style.css')
+    link(rel='stylesheet', href='/stylesheets/font-awesome-4.5.0/css/font-awesome.min.css')
+  body
+    nav(class='navbar navbar-inverse navbar-fixed-top')
+        div(class="container")
+            div(id="navbar" class="navbar-collapse collapse")
+                ul(class="nav navbar-nav")
+                    li 
+                        a(href="/")
+                            p 
+                                span(class="fa fa-line-chart")
+                                    lavel Home
+                    li 
+                        a(href="/manage/alerts")
+                            p 
+                                span(class="fa fa-gear") 
+                                    label Alerts
+                    li 
+                        a(href="/view/reports")
+                            p 
+                                span(class="fa fa-graph") 
+                                    label Detailed Reports
+    br
+    div(class="container")
+        block content

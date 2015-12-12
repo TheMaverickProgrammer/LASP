@@ -1,0 +1,36 @@
+extends ../layout
+block content
+  script(src='http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js')
+  script(src='/javascripts/alerts/page-script.js')
+
+  h1= title
+  p(class='container-fluid bg-primary') Alerts
+
+  // Wrapper
+  #wrapper(class='container-fluid')
+      // ADD Trigger
+      h2 Create a new alert
+      #addTrigger
+          table
+               thead
+                   input#inputTriggerName(type='text', placeholder='Name')
+                   input#inputMsgType(type='phone', placeholder='555-5555')
+                   br
+                   input#inputTriggerConditions(type='text', placeholder='TODO')
+                   br
+                   button#btnAddTrigger Add Alert
+      // END ADD 
+
+      // Entries
+      h2(class='h2 button') Active Alerts
+          #triggersList
+              table(class='table table-hover')
+                  thead
+                      th(class='col-sm-1') Name
+                      th(class='col-sm-2') Conditions           
+                      th(class='col-sm-1') Call
+                  tbody
+      // end
+
+  // end Wrapper
+// end content
