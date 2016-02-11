@@ -4,7 +4,8 @@
   "description": "Service that connects to the LASPAPI, watches for triggers, logs events when trigger, and delegates this information to RestComm to send emails, voice calls, texts, etc. to targets.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js SongBirdApp",
+    "stop": "pkill SongBirdApp"
   },
   "keywords": [
     "lasp",

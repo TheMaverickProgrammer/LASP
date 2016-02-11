@@ -38,7 +38,10 @@ function labelToResource(label) {
 	return apiResources[label];
 }
 
-var host = "216.186.148.128"+":8081";
+// var host = "192.168.1.207:8081"; // LOCAL IP TO API
+// var host = "107.204.112.61:8081"; // PUBLIC IP TO API (spring hill, TN)
+//var host = "192.168.2.107:8081";
+var host = "216.186.148.128:8081";
 
 // DOM Ready =============================================================
 $(document).ready(function() {

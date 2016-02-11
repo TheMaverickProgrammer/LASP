@@ -2,8 +2,8 @@
 Author's note: Alerts = Triggers in the LASP API
 */
 
-// "216.186.148.128" is generated through a bash script. Result is output as "page-script.js".
-var host = "216.186.148.128"+":8081"; 
+// %IP_ADDRESS% is generated through a bash script. Result is output as "page-script.js".
+var host = %IP_ADDRESS%+":8081"; 
 
 // DOM Ready =============================================================
 $(document).ready(function() {

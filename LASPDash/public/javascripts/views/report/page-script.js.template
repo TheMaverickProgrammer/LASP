@@ -38,7 +38,7 @@ function labelToResource(label) {
 	return apiResources[label];
 }
 
-var host = "216.186.148.128"+":8081";
+var host = %IP_ADDRESS%+":8081";
 
 // DOM Ready =============================================================
 $(document).ready(function() {

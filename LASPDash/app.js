@@ -1,3 +1,6 @@
+// Assign process name as an argument
+process.title = process.argv[2];
+
 var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');

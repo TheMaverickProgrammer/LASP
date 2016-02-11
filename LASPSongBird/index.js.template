@@ -20,7 +20,7 @@ var twilio = require('twilio');
 var twilioClient = twilio("AC41529d81bef2187807214c1def578206", "129d1b92a386618570bfaf2c1b1ed58d");
 
 // var localhost = "localhost:8081"; 
-var host = "216.186.148.128"+":8081";
+var host = %IP_ADDRESS%+":8081";
 var twilioNumber = "+17325080582";
 
 // anonymous object SongBird.
