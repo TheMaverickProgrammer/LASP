@@ -1,0 +1,15 @@
+{  
+	"bathingLabel":               "bathing",
+	"communicationLabel":         "communication",
+	"cookingLabel":               "cooking",
+	"dressingLabel":              "dressing",
+	"eatingLabel":                "eating",
+	"groomingLabel":              "grooming",
+	"houseworkLabel":             "housework",
+	"laundryLabel":               "laundry",
+	"medication_managementLabel": "medication management",
+	"shoppingLabel":              "shopping",
+	"toiletingLabel":             "toileting",
+	"transferringLabel":          "transferring",
+	"walkingLabel":               "walking" 
+}

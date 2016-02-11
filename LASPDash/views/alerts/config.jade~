@@ -1,5 +1,164 @@
 extends ../layout
-
 block content
-  h1= title
-  p Welcome to #{title}
+  script(src='http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js')
+  script(src='http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js')
+  script(src='/javascripts/Chartjs/Chart.min.js')
+  script(src='/javascripts/bootstrap/bootstrap.min.js')
+  script(src='/javascripts/bootstrap/plugins/bootstrap-switch.js')
+  script(src='/javascripts/bootstrap/plugins/bootstrap-clockpicker.js')
+  script(src='/javascripts/views/alerts/page-script.js')
+  link(href='/stylesheets/bootstrap-switch.css', rel='stylesheet')
+  link(href='/stylesheets/bootstrap-clockpicker.css', rel='stylesheet')
+   
+  div(class='container-fluid bg-primary') 
+    div(style='margin-left: 5%; margin-bottom: 0%; margin-up: 0%; margin-down: 0%;') LASP » Configure Alerts
+
+  section(id="content" class="content_inset")
+    
+    // Wrapper
+    #wrapper(class='container-fluid')
+      br
+      
+      button(type="button" class="btn btn-info btn-lg fa fa-plus-circle" data-toggle="modal" data-target="#addAlertModal")  New Alert
+      
+      div(id="addAlertModal" class="modal fade" role="dialog")
+        div(class="modal-dialog")
+          div(class="modal-content")
+            div(class="modal-header")
+              button(type="button" class="close" data-dismiss="modal") &times;
+              h4(class="modal-title")
+                Modal Create a new alert
+            div(class="modal-body")
+          
+              p Choose from the following alert configurations:
+          
+            ul(class="nav nav-tabs")
+              li(class="active")
+                a(data-toggle="tab" href="#pillbox") Pillbox
+              li
+                a(data-toggle="tab" href="#falling") Falling
+              li
+                a(data-toggle="tab" href="#alarm") Alarm
+
+            div(class="tab-content")
+              div(id="pillbox" class="tab-pane fade in active")
+                table(style="margin-left:5%; width: 80%")
+                  tbody
+                    tr
+                      td
+                        input(type='text')
+                      td
+                        p(style="float:right") Custom alert name
+                    tr  
+                      td
+                        input(type='tel')
+                      td
+                        p(style="float:right") Call this number
+                    tr
+                      td 
+                        input(type='number')
+                      td
+                        p(style="float:right") Pillbox ID
+                    tr
+                      td
+                        input(type='checkbox')
+                      td
+                        p(style="float:right") Notify when daily pills are taken out of order
+                    tr
+                      td
+                        input(type='checkbox')
+                      td
+                        p(style="float:right") Notify when pill has already been taken
+                    tr
+                      td 
+                        input(type='checkbox')
+                      td
+                        p(style="float:right") Notify when correct pill has been taken for the day
+              div(id="falling" class="tab-pane fade")
+                table(style="margin-left:5%; width: 80%")
+                  tbody
+                    tr
+                      td
+                        input(type='text')
+                      td
+                        p(style="float:right") Custom alert name
+                    tr  
+                      td
+                        input(type='tel')
+                      td
+                        p(style="float:right") Call this number
+                    tr
+                      td
+                        input(type="number")
+                      td
+                        p(style="float:right") Device ID           
+              div(id="alarm" class="tab-pane fade")
+                table(style="margin-left:5%; width: 80%")
+                  tbody
+                    tr
+                      td
+                        input(type='text')
+                      td
+                        p(style="float:right") Custom alarm name
+                    tr  
+                      td
+                        input(type='tel')
+                      td
+                        p(style="float:right") Call this number
+                    tr
+                      td
+                        div(class="input-group clockpicker")
+                          input(type="text" class="form-control" value="09:30")
+                          span(class="input-group-addon" style="color:#8B95B9;background-color:white")
+                            span(class="fa fa-clock-o")
+                      td
+                        p(style="float:right") Set the alarm time
+                    tr
+                      td
+                        input(type="checkbox")
+                      td
+                        p(style="float:right") Use this alarm every week
+            div(class="modal-footer")
+              button(id="btnSaveAlert" type="button" class="btn btn-save" data-dismiss="modal") Save Alert
+              button(id="btnCancelAlert" type="button" class="btn btn-default" data-dismiss="modal") Close
+            
+      button(id="btnViewCondition" type="button" class="btn btn-info btn-lg" data-toggle="modal" data-target="#viewConditionsModal" style="display:none;") View Conditions
+      div(id="viewConditionsModal" class="modal fade" role="dialog")
+        div(class="modal-dialog")
+          div(class="modal-content")
+            div(class="modal-header")
+              button(type="button" class="close" data-dismiss="modal") &times;
+              h4(class="modal-title")
+                View alert conditions
+            div(class="modal-body")
+                  // See Condition
+                  div(id="seeCondition")
+            
+            div(class="modal-footer")
+              button(id="btnCancelCondition" type="button" class="btn btn-default" data-dismiss="modal") Close
+            
+    // Alerts Entries
+ 
+    br
+    
+    div(class="panel-group")
+      div(class="panel panel-default")
+        div(class="panel-heading")
+          h4(class="panel-title")
+            a(data-toggle="collapse" href="#alertsList" class='fa fa-sort')  Show/Hide Alert List
+        div(id="collapse1" class="panel-collapse collapse")
+          div(class="panel-body") Panel Body
+          div(class="panel-footer") Panel Footer
+  
+      div(id='alertsList' class='collapse')
+        table(class='table table-hover')
+          thead
+            th(class='col-sm-1') Name
+            th(class='col-sm-1') Conditions           
+            th(class='col-sm-2') Delete?
+            th(class='col-sm-2') Active
+              tbody
+      // end Alerts List
+
+    // end Wrapper
+  // end content

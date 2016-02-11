@@ -1,9 +1,45 @@
+/**
+* Tests: 
+  1) One trigger fetched                           -- YES. SongBird analyzes conditions.
+  2) Trigger target exist                          -- YES. SongBird collects data and fires events.
+  3) Trigger target doesn't exist                  -- YES. SongBird does not fire any events.
+  4) Multiple triggers concurrently                -- TBD.
+  5) Triggers with multiple condition requirements -- TBD.
+  6) Triggers alert Twilio as well as fires events -- NO.
+  7) SongBird allocates small memory on machine    -- TBD.
+  8) Longest recorded SongBird uptime              -- 12 hours @ 7 triggers
+*/
+
 var request = require('request');
 var fs      = require('fs');
-var step    = require('step');
+var async   = require('async');
+var twilio = require('twilio');
+var twilioClient = twilio("AC41529d81bef2187807214c1def578206", "129d1b92a386618570bfaf2c1b1ed58d");
+
+// var localhost = "localhost:8081"; 
+var host = "216.186.148.128:8081"; //"107.204.112.61:8081";
+var twilioNumber = "+17325080582";
 
 // anonymous object SongBird.
 ({
+	 // use Twilio to make calls
+	 makeCall: function(url, number) {
+	  
+	   // Contact Twilio
+       twilioClient.makeCall({
+         url: url,
+	     to: number,
+	     from: twilioNumber
+       }, function(err, data) {
+       	 if (err) {
+	       console.error('Could not make call.');
+	       console.error(err);
+	     } else {
+	       console.log('Call completed to #' + data.to);
+	     }
+       });	 
+	 },
+	 
      // SongBird log
      log: function(buffer, from) {
  
@@ -32,149 +68,245 @@ var step    = require('step');
           fs.appendFileSync(filepath, buffer);
      },
      
-     checkCondition: function(conditionData, triggerName, buffer) {
-         var rate  = conditionData.rate;
-    
-         var status = false; // Condition has not been met
-        
-         // If the trigger timer has reached it's timeout
-         step(function() {                 
-         var isTimeToFire = false;
-
-         request.get('http://localhost:3000/events/' + triggerName + '/latest', {timeout: 10000}, function (error, response, body) {
-
-             if (!error && response.statusCode == 200) {
-
-
-                 var data = JSON.parse(body);
- 
-                 if(data.length == 0) {
-                     console.log("Event not found. Should be first time firing if conditions met.", "function checkCondition");
-                     isTimeToFire = true;
-                     return true;
-                 }
-
-                 // undetermined
-                 if(!isTimeToFire) {
-                     // Check time stamp
-                     var lastFireTime = data.timestamp;
- 
-                     // Now - then = time passed. Has enough time passed to fire an event?
-                     var lapsed = new Date().getTime() - lastFireTime;
-
-                     console.log(lapsed);
-
-                     if(lapsed >= rate) { 
-                         isTimeToFire = true;
-                     }
-                 }
-             }
-       });      
-
-             return isTimeToFire;
- }, function(err, res) {
-                 var isTimeToFire = res;
-
-                 console.log("next step isTimeToFire:" + isTimeToFire);
-
-                 // Last check
-                 if(isTimeToFire) {
-			 // Otherwise...
-		         // Now that we know we should fire, continue checking if the conditions are met...
-
-				 var collection = conditionData.collection;
-				 var property   = conditionData.property;
-				 var operator   = conditionData.operator;
-				 var value      = conditionData.value;
-
-				 if(collection == "pillboxes") {
-				     var deviceUID = conditionData.deviceUID;             
-
-				     // Build an API query using the conditions
-				     request.get('http://localhost:3000/' + collection + '/' + deviceUID + '', {timeout: 10000}, function (error, response, body) {
-
-					if (!error && response.statusCode == 200) {
-					    var data = JSON.parse(body);
+     checkPillboxTrigger: function(triggerData) {
+     	var that = this;
+     	
+     	var triggerName = triggerData.name;
+     	
+     	var deviceID = triggerData.settings.deviceID;
+     	
+     	request.get('http://' + host + '/events/' + triggerName + '/today',
+     	   {timeout: 100000}, 
+     	   function (error, response, body) {
+		     if (!error && response.statusCode == 200) {
+		       var data = JSON.parse(body);
+	           console.log("GET request data: " + body);
 			 
-					    if(data.length == 0) {
-						console.log("Pillbox not found. Trigger condition cannot be met.", "function checkCondition");
-						return;
-					    }
-
-					    if(operator === "=") { 
-						// console.log(JSON.stringify(data[0][property]));
-
-						if(data[0][property] == value) {
-                                                     status = true; // condition met...
-                                                     return true;
-						}
-					    }
-					}
-				     });     
-				 } 
-                 }
-                 else
-                 {
-                     console.log("Not time to fire...");
-                     return false;
-                 }
-             }
-         );
-
-       // else { /* Problem with the HTTP call */ }
-         //});
-
-         return status;
+			   if(data.length == 0) {
+			   	 // No events, so fire
+			     console.log("Event entry for pillbox not found. This will be the first time it has fired today.", "function checkCondition");
+			     
+			       request.get('http://' + host + '/pillboxes/' + deviceID + '/today',
+			         {timeout: 100000}, 
+			         function (error, response, body) {
+			           if (!error && response.statusCode == 200) {
+			             var data = JSON.parse(body);
+			             console.log("GET request data: " + body);
+			           
+			           	   // Condition met
+			           	   
+			           	   var child = triggerData.settings.child;
+			           	   var number = triggerData.number;
+			           	   var notifyOutOfOrder   = triggerData.settings.notifyOutOfOrder;
+			           	   var notifyAlreadyTaken = triggerData.settings.notifyAlreadyTaken;
+				           var notifyCorrectDay   = triggerData.settings.notifyCorrectDay;
+				
+				           console.log("\nOUT: " + notifyCorrectDay);
+				           
+						   if(notifyCorrectDay == true) { 
+						   	   console.log("checking to notify for today");
+						   	   
+						     var d = new Date();
+							 var weekday = new Array(7);
+							 weekday[0]=  "Sunday";
+						     weekday[1] = "Monday";
+							 weekday[2] = "Tuesday";
+							 weekday[3] = "Wednesday";
+							 weekday[4] = "Thursday";
+							 weekday[5] = "Friday";
+							 weekday[6] = "Saturday";
+							 							
+							 var n = weekday[d.getDay()];
+							 
+							 var fire = false;
+							 
+							 if(body.m == "1" && n == "Monday") { fire = true; }
+							 else if(body.t == "1" && n == "Tuesday") { fire = true; }
+							 else if(body.w == "1" && n == "Wednesday") { fire = true; } 
+                             else if(body.r == "1" && n == "Thursday") { fire = true; }
+							 else if(body.f == "1" && n == "Friday") { fire = true; }
+							 else if(body.s == "1" && n == "Saturday") { fire = true; }
+							 else if(body.u == "1" && n == "Sunday") { fire = true; }
+							 
+                             if(fire === true) {
+								 // Make the call
+								 that.makeCall('http://' + host +"/twilio/pillbox/taken/"+encodeURI(child)+"/"+n, number);
+								 
+								 // Log the event entry
+								 var event = {
+									 "name": name,
+									 "timestamp": new Date().getTime()
+								 };
+								 
+								 request({url: 'http://' + host + '/events/', method: "POST", json: event}, 
+								   function (error, response, body) {
+									 if (!error && response.statusCode == 200) {
+										 console.log("event logged");
+									 } else {
+										 console.log("there was a problem logging the event");
+									 }
+								   }
+								 );
+						     } 
+						     else 
+						     {
+                             	 that.makeCall('http://' + host +"/twilio/pillbox/wrongday/"+encodeURI(child), number);
+						     }
+					       }
+					   } else {
+					   	console.log("no events fired today");   
+					   }
+					 }
+				  );
+			   }
+			 }
+		   }
+		 );
+									
      },
-
-     // Grab individual trigger info and check conditions, aggregate log info, and fire events
+     
+     checkMovement: function(deviceID, number, child, eventName) {
+       console.log("--checking for movement--");
+     	 
+       request.get('http://' + host + '/falls/' + deviceID + '/',
+         {timeout: 100000}, 
+     	 function (error, response, body) {
+		   if (!error && response.statusCode == 200) {
+		     var data = JSON.parse(body);
+		     
+		     console.log("GET request data check movement: " + body);
+				 
+		     if(data.length == 0) {
+			   console.log("Falling entry not found. Trigger condition cannot be met.", "function checkCondition");
+										
+		       // Condition not met
+		     }else {
+			   // Condition met
+			   
+			   // Check if orientation is in motion
+			   // orient = 0, when child has fallen
+			   // orient = 1, when child is in motion
+			   
+			   if(data.orient === 0) {
+			     // A period of time has passed, the child is still
+			     // on the ground
+			     // make call 
+			     that.makeCall('http://' + host +"/twilio/fallen/"+encodeURI(child), number);
+			     
+				// Log the event entry
+				 var event = {
+					 "name": eventName,
+					 "timestamp": new Date().getTime()
+				 };
+				 
+				 request({url: 'http://' + host + '/events/', method: "POST", json: event},
+				   function (error, response, body) {
+					 if (!error && response.statusCode == 200) {
+						 console.log("event logged");
+					 } else {
+						 console.log("there was a problem logging the event");
+					 }
+				   }
+				 );
+			   }
+	         }
+	       }
+	     }
+	   );
+     },
+     
+     checkFallingTrigger: function(triggerData) {
+     	 var that = this;
+     	 
+     	 var deviceID = triggerData.settings.deviceID;
+     	 
+     	 request.get('http://' + host + '/falls/' + deviceID + '/unchecked',
+     	   {timeout: 100000}, 
+     	   function (error, response, body) {
+		     if (!error && response.statusCode == 200) {
+				 var data = JSON.parse(body);
+				 console.log("GET request data falling: " + body);
+				 
+				 if(data.length == 0) {
+				   console.log("Falling entry not found. Trigger condition cannot be met.", "function checkCondition");
+										
+				   // Condition not met
+				 }else {
+					 // Condition met
+					 
+					 var eventName = triggerData.name;
+					 var child = triggerData.settings.child;
+					 var number = triggerData.number;
+					 var responseTime = triggerData.settings.responseTime;
+					 
+					 console.log("== response time: " + responseTime + " ==");
+					 
+					 // Set a timer to check to see if the child has moved before we make a call
+					 if(responseTime === 'undefined' || responseTime == 0) {
+					   console.log(">>> CALLING NOW <<<");
+						// make call NOW
+					   that.makeCall('http://' + host +"/twilio/fallen/"+encodeURI(child), number)
+					 } else {
+						 // Wait to see if child stands up (NOTE: responeTime is in seconds)
+						 // Convert to milliseconds
+						 setTimeout(function() {
+						   that.checkMovement(deviceID, number, child, eventName);
+						 },
+						   responseTime*1000
+						 );
+					 }
+					 
+					 // flag the fall as already checked
+					 request.post('http://' + host + '/falls/' + deviceID + '/check', 
+					   {timeout: 100000},
+					   function(error, response, body) {
+						   if(!error && response.statusCode == 200) {
+							   console.log("posted");
+						   }
+					   }
+					 );
+					 
+					 // Log the event entry
+					 var event = {
+						 "name": eventName,
+						 "timestamp": new Date().getTime()
+					 };
+					 
+					 request({url: 'http://' + host + '/events/', method: "POST", json: event},
+					   function (error, response, body) {
+						 if (!error && response.statusCode == 200) {
+							 console.log("event logged");
+						 } else {
+							 console.log("there was a problem logging the event");
+						 }
+					   }
+					 );
+			     }
+			 }
+		   });
+     },
+     
+     checkAlarmTrigger: function(triggerData) {
+     	 
+     },
+     
+     // types = [pillbox, falls, alarm]
      checkTrigger: function(triggerData, buffer) {
-         buffer += "Trigger name captured: " + triggerData.name + "\n";
-
-         var conditions = triggerData.conditions; // array
-
-         /* Conditions take the following example structure.
-          * 
-          * { "collection": "pillboxes", 
-          *   "deviceUID" : "333",
-          *   "property"  : "m",
-          *   "operator"  : "=",
-          *   "value"     : "true"
-          *         ... 
-          * }
-          */
-
-         var matchedCount = 0;
-
-         // console.log("There are " + conditions.length + " conditons");
-
-         for(var i = 0; i < conditions.length; i++) {
-             step (
-                 this.checkCondition(conditions[i], triggerData.name, buffer),
-                 function check(err, res) {
-                     if(err) {console.log("err"); return;}
-
-                     if(res == true) {
-                         matchedCount++;
-                     }
-                 }
-              )
+         var type = triggerData.type;
+         
+         switch(type) {
+         case "pillbox":
+         	 return this.checkPillboxTrigger(triggerData);
+         	 break;
+         case "falling":
+         	 return this.checkFallingTrigger(triggerData);
+         	 break;
+         case "alarm":
+         	 return this.checkAlarmTrigger(triggerData);
+         	 break;
          }
-
-         // If the query values match the condition rules, log an event
-         if(matchedCount == conditions.length) {
-
-            var data = {"triggerName": triggerData.name, "timestamp": new Date().getTime().toString()};
-            console.log(JSON.stringify(data));
-            request.post({url: 'http://localhost:3000/events', form: data}, function (error, response, body) {
-                if (!error && response.statusCode == 200) {
-                    buffer += "Logged event\n";
-console.log("logged event...");
-                }
-
-                 // Contact RestComm
-             });
-         }
+         
+         return false;
      },
 
      // Go through each trigger in the response. Log data.
@@ -187,37 +319,48 @@ console.log("logged event...");
          }
 
          console.log("checking triggers...");
+         console.log(JSON.stringify(data));
 
          var buffer = "";
          
          for(var i = 0; i < data.length; i++) {
-             this.checkTrigger(data[i], buffer);
+             if(this.checkTrigger(data[i], buffer)) {
+             	 // log the event
+				var data = {"triggerName": data[i].name, "timestamp": new Date().getTime().toString()};
+				console.log(JSON.stringify(data));
+				request.post({url: 'http://' + host +'/events', form: data}, function (error, response, body) {
+					if (!error && response.statusCode == 200) {
+						buffer += "Logged event\n";
+						console.log("logged event...");
+					}
+				 });	 
+             }
          }
 
          this.log(buffer, "function checkTriggers");
      },
 
-    // function to poll the API. This is the heart of SongBird.
+    // function to poll the API. This is the heartbeat of SongBird.
     tick: function() {
         var that = this;
-        request.get('http://localhost:3000/triggers/list', {timeout: 10000}, function (error, response, body) {
+        request.get('http://' + host + '/triggers/list', {timeout: 100000}, function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 // console.log(JSON.stringify(body)) // Show the JSON response
                 var JSONdata = body;
                 that.checkTriggers(JSONdata);
                 that.log("statusCode 200", "function tick");
 
-                //console.log("should be passing off the work...");
+                console.log("should be passing off the work...");
             }
 
             if (error && error.code === 'ETIMEDOUT') {
-                var msg = 'Time out for GET http://localhost:3000/triggers/list';
+                var msg = 'Time out for GET http://' + host + '/triggers/list';
                 console.log(msg);
                 that.log(msg, "function tick");
             }
 
-            // Another one
-            that.tick();
+            // Another one every 1 second
+            setTimeout(that.tick(), 50000);
         });
      }
-}).tick();
+}).tick(); //.makeCall(host+"/twilio/pillbox/wrongday/Mason", "3342216912"); 

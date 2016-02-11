@@ -5,7 +5,7 @@ html
     link(rel='stylesheet', href='/stylesheets/lavish-bootstrap.css')
     link(rel='stylesheet', href='/stylesheets/nav-style.css')
     link(rel='stylesheet', href='/stylesheets/font-awesome-4.5.0/css/font-awesome.min.css')
-  body
+  body(style='min-height:auto;')
     nav(class='navbar navbar-inverse navbar-fixed-top')
         div(class="container")
             div(id="navbar" class="navbar-collapse collapse")
@@ -25,6 +25,4 @@ html
                             p 
                                 span(class="fa fa-line-chart") 
                                     label Detailed Reports
-    br
-    div(class="container")
-        block content
+    block content

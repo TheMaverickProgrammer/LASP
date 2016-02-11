@@ -1,0 +1,187 @@
+/*
+Author's note: Alerts = Triggers in the LASP API
+*/
+
+// var host = "192.168.1.207:8081"; // LOCAL IP TO API
+var host = "107.204.112.61:8081"; // PUBLIC IP TO API
+
+// DOM Ready =============================================================
+$(document).ready(function() {
+
+    $("[type='checkbox']").bootstrapSwitch();
+    $('.clockpicker').clockpicker();
+		
+    // Save alert button click
+    $('#btnSaveAlert').on('click', addAlert);
+
+    // Cancel alert button click
+    $('#btnCancelAlert').on('click', cancelAlert);
+  
+    // Cancel conditions modal take care of by bootstrap
+    
+    // Populate the alert table on initial page load
+    populateTable();
+
+    // Register delete button
+    registerDeleteButton();
+});
+
+// Functions =============================================================
+
+// Prepar conditions viewing modal
+function prepareConditionsViewingModal() {
+
+	$("a").on('click', function(event) {
+			console.log("fdsf");
+			
+	  event.preventDefault(); // Do not bring the DOM to the top of the page
+	  
+	  var content = $(this).find('meta[name=conditionInfo]').attr("content");
+	  
+	  // Replace modal body with this trigger condition info
+	  $("#seeCondition").html(content);
+	  
+	  // Bring up the modal by triggering a click event on the hidden button
+	  $("#btnViewCondition").trigger('click');
+	});
+}
+
+// Cancel Alert
+function cancelAlert(event) {
+	// Clear the form inputs
+	$('#addAlert input').each(function(index) {
+		$(this).val('');
+	});
+}
+
+// Add Alert
+function addAlert(event) {
+    event.preventDefault();
+
+    // Super basic validation - increase errorCount variable if any fields are blank
+    var errorCount = 0;
+    if($('#inputAlertName').val() === '') { errorCount++; }
+
+    // Check and make sure errorCount's still at zero
+    if(errorCount === 0) {
+
+        // If it is, compile all alert info into one object
+        var newAlert = {
+            'name': $('#inputAlertName').val(),
+            'conditions':$('#inputAlertConditions').val(),
+        }
+
+        // Use AJAX to post the object to our alert service
+        $.ajax({
+            type: 'POST',
+            data: newAlert,
+            url: 'http://' + host + '/triggers/',
+            dataType: 'JSON'
+        }).done(function( response ) {
+
+            // Check for successful (blank) response
+            if (response.msg === '') {
+
+                // Clear the form inputs
+                $('#addAlert input').each(function(index) {
+                    $(this).val('');
+                });
+
+                // Update the table
+                populateTable();
+                registerDeleteButton();
+            }
+            else {
+
+                // If something goes wrong, alert the error message that our service returned
+                alert('Error: ' + response.msg);
+
+            }
+        });
+    }
+    else {
+        // If errorCount is more than 0, error out
+        alert('Please fill in the name for the alert');
+        return false;
+    }
+};
+
+// Delete Alert
+function deleteAlert(event) {
+
+    event.preventDefault();
+
+    // Pop up a confirmation dialog
+    var confirmation = confirm('Are you sure you want to delete this alert?');
+
+    // Check and make sure the user confirmed
+    if (confirmation === true) {
+
+        // If they did, do our DELETE /alerts/{name}
+        $.ajax({
+            type: 'DELETE',
+            url: 'http://' + host + '/triggers/' + $(this).find("#linkdeletealert").first().attr('name')
+        }).done(function( response ) {
+
+            // Check for a successful (blank) response
+            if (response.msg === '') {
+            }
+            else {
+                alert('Error: ' + response.msg);
+            }
+
+            // Update the table
+            populateTable();
+        });
+
+    }
+    else {
+
+        // If they said no to the confirm, do nothing
+        return false;
+
+    }
+
+};
+
+// Fill table with data
+function populateTable() {
+
+    // Empty content string
+    var tableContent = '';
+
+    // jQuery AJAX call for JSON
+    $.getJSON( 'http://' + host + '/triggers/list', function( data ) {
+
+        // For each item in our JSON, add a table row and cells to the content string
+        $.each(data, function(){
+            alertsListData = data;
+            tableContent += '<tr>';
+            tableContent += '<td class="col-sm-1 name">' + this.name + '</a></td>';
+            tableContent += '<td class="col-sm-1">' + '<a id="conditionLink" href="#"><meta name="conditionInfo" content=' + JSON.stringify(this.conditions) + '>click to view</a>' + '</td>';
+            tableContent += '<td class="col-sm-2"><div class="delete btn btn-danger"><meta id="linkdeletealert" name="' + this.name + '">delete</meta></div></td>';
+            tableContent += '<td class="col-sm-2"><input type="checkbox" data-role="flipswitch" name="switch" id="switch"></td>';
+            tableContent += '</tr>';
+        });
+
+        // Inject the whole content string into our existing HTML table
+        $('#alertsList table tbody').html(tableContent);
+         
+        // Turn checkboxes into switches
+        $("input[type=checkbox]").switchButton({
+		  checked: false
+		});
+		
+		// Prepare the condition viewing modal
+		prepareConditionsViewingModal();
+    });
+};
+
+// Register delete buttons
+function registerDeleteButton() {
+    // unbind all events from the cue
+    $('tbody').unbind();
+
+    // Delete Pillbox button click
+    $('tbody').on('click', '.delete', deleteAlert);
+}

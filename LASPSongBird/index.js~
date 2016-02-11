@@ -1,6 +1,21 @@
+/**
+* Tests: 
+  1) One trigger fetched                           -- YES. SongBird analyzes conditions.
+  2) Trigger target exist                          -- YES. SongBird collects data and fires events.
+  3) Trigger target doesn't exist                  -- YES. SongBird does not fire any events.
+  4) Multiple triggers concurrently                -- TBD.
+  5) Triggers with multiple condition requirements -- TBD.
+  6) Triggers alert Twilio as well as fires events -- NO.
+  7) SongBird allocates small memory on machine    -- TBD.
+  8) Longest recorded SongBird uptime              -- 12 hours @ 7 triggers
+*/
+
 var request = require('request');
 var fs      = require('fs');
-var step    = require('step');
+var async   = require('async');
+var client  = require('twilio')("AC41529d81bef2187807214c1def578206", "129d1b92a386618570bfaf2c1b1ed58d");
+
+var host = "localhost:8081"; //"107.204.112.61:8081";
 
 // anonymous object SongBird.
 ({
@@ -32,102 +47,135 @@ var step    = require('step');
           fs.appendFileSync(filepath, buffer);
      },
      
-     checkCondition: function(conditionData, triggerName, buffer) {
-         var rate  = conditionData.rate;
-    
-         var status = false; // Condition has not been met
+     checkCondition: function(conditionData, triggerName, triggerRate, buffer, callbackPrime) {
+         var rate  = triggerRate;
+         
+         console.log("checkCondition.conditionData: " + JSON.stringify(conditionData));
+         
+         var locals = {isTimeToFire: false, isConditionMet: false, conditionData: conditionData};
         
          // If the trigger timer has reached it's timeout
-         step(function() {                 
-         var isTimeToFire = false;
+         async.series([
+         		 function(callback) {                 
 
-         request.get('http://localhost:3000/events/' + triggerName + '/latest', {timeout: 10000}, function (error, response, body) {
-
-             if (!error && response.statusCode == 200) {
-
-
-                 var data = JSON.parse(body);
- 
-                 if(data.length == 0) {
-                     console.log("Event not found. Should be first time firing if conditions met.", "function checkCondition");
-                     isTimeToFire = true;
-                     return true;
-                 }
-
-                 // undetermined
-                 if(!isTimeToFire) {
-                     // Check time stamp
-                     var lastFireTime = data.timestamp;
- 
-                     // Now - then = time passed. Has enough time passed to fire an event?
-                     var lapsed = new Date().getTime() - lastFireTime;
-
-                     console.log(lapsed);
-
-                     if(lapsed >= rate) { 
-                         isTimeToFire = true;
-                     }
-                 }
-             }
-
-   console.log("response code: " + response.statusCode);
-       });      
-
-             return isTimeToFire;
- }, function(err, res) {
-                 var isTimeToFire = res;
-
-                 console.log("next step isTimeToFire:" + isTimeToFire);
-
-                 // Last check
-                 if(isTimeToFire) {
-			 // Otherwise...
-		         // Now that we know we should fire, continue checking if the conditions are met...
-
-				 var collection = conditionData.collection;
-				 var property   = conditionData.property;
-				 var operator   = conditionData.operator;
-				 var value      = conditionData.value;
-
-				 if(collection == "pillboxes") {
-				     var deviceUID = conditionData.deviceUID;             
-
-				     // Build an API query using the conditions
-				     request.get('http://localhost:3000/' + collection + '/' + deviceUID + '', {timeout: 10000}, function (error, response, body) {
-
-					if (!error && response.statusCode == 200) {
-					    var data = JSON.parse(body);
+         		 	 request.get('http://' + host + '/events/' + triggerName + '/latest', {timeout: 100000}, function (error, response, body) {
+		
+						 if (!error && response.statusCode == 200) {
+			
+			
+							 var data = JSON.parse(body);
 			 
-					    if(data.length == 0) {
-						console.log("Pillbox not found. Trigger condition cannot be met.", "function checkCondition");
-						return;
-					    }
-
-					    if(operator === "=") { 
-						// console.log(JSON.stringify(data[0][property]));
-
-						if(data[0][property] == value) {
-                                                     status = true; // condition met...
-                                                     return true;
-						}
-					    }
-					}
-				     });     
-				 } 
-                 }
-                 else
-                 {
-                     console.log("Not time to fire...");
-                     return false;
-                 }
-             }
-         );
-
-       // else { /* Problem with the HTTP call */ }
-         //});
-
-         return status;
-     },
+							 if(data.length == 0) {
+								 console.log("Event not found. Should be first time firing if conditions met.", "function checkCondition");
+								 
+								 // It IS time to fire the event
+								 locals.isTimeToFire = true;
+							 }
+			
+							 // undetermined
+							 if(!locals.isTimeToFire) {
+								 // Check time stamp
+								 
+								 var lastFireTime = data[0].timestamp;
+								 
+								 console.log("data: " + JSON.stringify(data[0]));
+			 
+								 // Now - then = time passed. Has enough time passed to fire an event?
+								 var lapsed = new Date().getTime() - lastFireTime;
+			
+								 console.log(lapsed);
+			
+								 if(lapsed >= rate) { 
+									 // It IS time to fire the event
+									 locals.isTimeToFire = true;
+								 }
+							 }
+							 
+							 // Move onto the next function in the series
+							 callback();
+						 } else {
+						 	 callback(error);
+						 }
+					 });      
+             		
+					 // We should never get here
+             	 }, 
+             	 
+             	 function(callback) {
+		 
+					 var isTimeToFire = locals.isTimeToFire;
+	
+					 console.log("next step isTimeToFire:" + isTimeToFire);
+	
+					 // Last check
+					 if(isTimeToFire) {
+					 // Otherwise...
+						 // Now that we know we should fire, continue checking if the conditions are met...
+		
+						 var collection = locals.conditionData.collection;
+						 var property   = locals.conditionData.property;
+						 var operator   = locals.conditionData.operator;
+						 var value      = locals.conditionData.value;
+		
+						 console.log("collection is: " + collection);
+						 
+						 if(collection == "pillboxes") {
+							 var deviceUID = conditionData.deviceUID;             
+		
+							 // Build an API query using the conditions
+							 request.get('http://' + host + '/' + collection + '/' + deviceUID + '', {timeout: 100000}, function (error, response, body) {
+								if (!error && response.statusCode == 200) {
+									var data = JSON.parse(body);
+									console.log("GET request data: " + body);
+						 
+									if(data.length == 0) {
+										console.log("Pillbox not found. Trigger condition cannot be met.", "function checkCondition");
+									
+									// Condition not met
+									}else {
+										if(operator === "=") { 
+											console.log("property: " + property);
+											console.log(JSON.stringify(data[0][property]));
+				
+											if(data[0][property] == value) {
+												// condition met...
+												locals.isConditionMet = true;
+												//callbackPrime(null, true);	
+											}
+										}
+									}
+														 
+									 // Move onto the next function in the series
+									 callback();
+								} else {
+									callback(error);
+								}
+							 });     
+						 } 
+					 }
+					 else
+					 {
+						 console.log("Not time to fire...");
+					 }
+				 }
+			 ],
+			 
+			 // Callback when the series is completed
+			 function(err) {
+			 	 // purposefully left empty
+			 	 if(err) {
+			 	 	 console.log("error: " + err);
+			 	 	 
+			 	 	 // Bubble up the call-stack
+			 	 	 // throw err;
+			 	 }
+			 	 
+			 	 // What are the results of the local object? (Primarily: isConditionMet)
+			 	 if(locals.isConditionMet == true) {
+			 	     callbackPrime(null, true);	 
+			 	 }
+			 });
+	},
 
      // Grab individual trigger info and check conditions, aggregate log info, and fire events
      checkTrigger: function(triggerData, buffer) {
@@ -146,37 +194,67 @@ var step    = require('step');
           * }
           */
 
-         var matchedCount = 0;
-
          // console.log("There are " + conditions.length + " conditons");
-
+         
+         var callbackFinish = function(err, results) {
+         	 console.log("callbackPrimary.results: " + JSON.stringify(results));
+         	 
+         	 if(typeof results === 'undefined' || results === null)  {
+         	 	 console.log("Nothing happened.");
+         	 } else {
+				 var matchedCount = 0;
+				 
+				 for(var i = 0; i < results.length; i++) {
+					 if(results[i] == true) {
+						 matchedCount++;
+					 }
+				 }
+				 
+				 console.log("matchedCount/conditions.length: " + matchedCount + "/" + conditions.length);
+				 
+				 // If the query values match the condition rules, log an event
+				 if(matchedCount == conditions.length) {
+		
+					var data = {"triggerName": triggerData.name, "timestamp": new Date().getTime().toString()};
+					console.log(JSON.stringify(data));
+					request.post({url: 'http://' + host +'/events', form: data}, function (error, response, body) {
+						if (!error && response.statusCode == 200) {
+							buffer += "Logged event\n";
+		                    console.log("logged event...");
+		
+							 // Contact Twilio
+							 client.messages.create({
+								body: "Pillbox event fired. <DO NOT REPLY. This is an automated sms notification from LASP>",
+								to: "6153642644",
+								from: "+17325080582"
+							  }, function(err, data) {
+								if (err) {
+								  console.error('Could not notify administrator');
+								  console.error(err);
+								} else {
+								  console.log('Administrator notified');
+								}
+							  });
+						}
+					 });
+				 }
+			 }
+         };
+         
+         var items = [];
+                  
          for(var i = 0; i < conditions.length; i++) {
-             step (
-                 this.checkCondition(conditions[i], triggerData.name, buffer),
-                 function check(err, res) {
-                     if(err) {console.log("err"); return;}
-
-                     if(res == true) {
-                         matchedCount++;
-                     }
-                 }
-              )
+         	 // console.log("trigger name: " + triggerData.name);
+         	 var that = this;
+         	 var locals = {conditionData: conditions[i]};
+         	 
+         	 console.log(conditions[i].collection);
+         	 items.push(function(callback){that.checkCondition(locals.conditionData, triggerData.name, triggerData.rate, buffer, callback);});
          }
+         
+         // Call async parallel to handle this 
+         async.parallel(items, callbackFinish);
 
-         // If the query values match the condition rules, log an event
-         if(matchedCount == conditions.length) {
-
-            var data = {"triggerName": triggerData.name, "timestamp": new Date().getTime().toString()};
-            console.log(JSON.stringify(data));
-            request.post({url: 'http://localhost:3000/events', form: data}, function (error, response, body) {
-                if (!error && response.statusCode == 200) {
-                    buffer += "Logged event\n";
-console.log("logged event...");
-                }
-
-                 // Contact RestComm
-             });
-         }
      },
 
      // Go through each trigger in the response. Log data.
@@ -189,6 +267,7 @@ console.log("logged event...");
          }
 
          console.log("checking triggers...");
+         console.log(JSON.stringify(data));
 
          var buffer = "";
          
@@ -199,21 +278,21 @@ console.log("logged event...");
          this.log(buffer, "function checkTriggers");
      },
 
-    // function to poll the API. This is the heart of SongBird.
+    // function to poll the API. This is the heartbeat of SongBird.
     tick: function() {
         var that = this;
-        request.get('http://localhost:3000/triggers/list', {timeout: 10000}, function (error, response, body) {
+        request.get('http://' + host + '/triggers/list', {timeout: 100000}, function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 // console.log(JSON.stringify(body)) // Show the JSON response
                 var JSONdata = body;
                 that.checkTriggers(JSONdata);
                 that.log("statusCode 200", "function tick");
 
-                //console.log("should be passing off the work...");
+                console.log("should be passing off the work...");
             }
 
             if (error && error.code === 'ETIMEDOUT') {
-                var msg = 'Time out for GET http://localhost:3000/triggers/list';
+                var msg = 'Time out for GET http://' + host + '/triggers/list';
                 console.log(msg);
                 that.log(msg, "function tick");
             }

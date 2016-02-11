@@ -1,24 +1,53 @@
 extends ../layout
 block content
-  link(rel='stylesheet', href='/stylesheets/hgraph.css')
   script(src='http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js')
+  script(src='/javascripts/Chartjs/Chart.min.js')
+  script(src='/javascripts/Chartjs/Chart.MultiLine.js')
+  script(src='/javascripts/bootstrap/bootstrap.min.js')
   script(src='/javascripts/views/report/page-script.js')
-  script(src='/javascripts/views/report/HealthGraph.js')
-  script(src='/javascripts/views/report/d3.js')
-  script(src='/javascripts/views/report/hammer.js')
-  h1= title
-  
-  hr(class="db")
+  div(class='container-fluid bg-primary') 
+    div(style='margin-left: 5%; margin-bottom: 0%; margin-up: 0%; margin-down: 0%;') LASP > Reports
   
   section(id="graph_container" class="content_inset")
-    nav(class="cf")
-        button(class="t grad1 fleft graph_nav_opt" id="info_btn")
-          span(class="fa fa-info-circle btn-fix")
-        button(class="t grad1 fleft graph_nav_opt" id="zoom_btn")
-          span(class="fa fa-search-plus btn-fix")
-        button(class="t grad1 fleft graph_nav_opt" id="connector_btn")
-          span(class="fa fa-power-off btn-fix")          
-    figure(id="viz" class="content_inset healthgraph detailed")
-    div(id="info_panel")
-      img(src="/images/hgraph_timeline.png")
-
+    nav(class="cf")     
+        div(style="width:40%; margin:auto; height:30%;")
+          button(class="t grad1 fleft graph_nav_opt" id="info_btn")
+            span(class="fa fa-info-circle btn-fix")
+          
+          canvas(id="canvas" height="450" width="450")
+          
+ 
+    button(type="button" id="myModalBtn" class="btn btn-info btn-lg" data-toggle="modal" data-target="#myModalHistory" style="display:none;") Open History Modal
+    div(id="myModalHistory" class="modal fade" role="dialog")
+      div(class="modal-dialog")
+        div(class="modal-content")
+          div(class="modal-header")
+            button(type="button" class="close" data-dismiss="modal") &times;
+            h4(class="modal-title")
+              Modal History
+          div(class="modal-body")
+              div(id="categoryHistory" class="has-spinner")
+                span(class="spinner")
+                  i(class="icon-spin icon-refresh")
+                
+                div(id="categoryContent")
+                  
+          div(class="modal-footer")
+            button(type="button" class="btn btn-default" data-dismiss="modal") Close
+            
+    br
+            
+    button(type="button" id="myLinegraphModalBtn" class="btn btn-info btn-lg" data-toggle="modal" data-target="#myModalLinegraph" style="display:none;") Open Line Graph Modal
+    div(id="myModalLinegraph" class="modal fade" role="dialog" class="overflow-y: auto;")
+      div(class="modal-dialog")
+        div(class="modal-content")
+          div(class="modal-header")
+            button(type="button" class="close" data-dismiss="modal") &times;
+            h4(class="modal-title")
+              Modal View category history
+          div(class="modal-body")
+            p 
+              You are previewing the recent week, average moving month, and average moving year.
+              div(id="multipleLinegraphs")
+          div(class="modal-footer")
+            button(type="button" class="btn btn-default" data-dismiss="modal") Close
